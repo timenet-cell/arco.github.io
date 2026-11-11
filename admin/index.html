@@ -134,13 +134,21 @@ section.block>.label{margin-bottom:20px}
   </div>
   <div class="login-box">
     <a class="logo" href="../index.html"><svg viewBox="0 0 200 150" aria-hidden="true"><use href="#anel" fill="#C8432B"/></svg><span><b>ARCO</b><small>Collectivo Criativo</small></span></a>
-    <div><p class="caps mut" style="margin:0 0 12px">Área reservada</p><h1>Entrar</h1></div>
+    <div><p class="caps mut" style="margin:0 0 12px">Área reservada</p><h1 id="login-title">Entrar</h1></div>
     <div id="login-cfg" class="msg warn" hidden>Falta ligar ao Supabase: preencher o ficheiro arco-config.js. Até lá pode ver a admin em modo demonstração (nada é gravado).</div>
     <form id="login-form" novalidate>
       <div class="field"><label for="l-email">Email</label><input id="l-email" type="email" autocomplete="username" required></div>
       <div class="field"><label for="l-pass">Password</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
       <div id="login-msg" class="msg err" role="alert" hidden></div>
       <div class="bar-actions"><button class="btn pri" type="submit">Entrar</button><button id="demo-btn" class="btn" type="button" hidden>Ver demonstração</button></div>
+      <button id="forgot" class="btn link" type="button" style="align-self:flex-start;padding:0">Esqueci-me da password</button>
+    </form>
+    <form id="pass-form" novalidate hidden>
+      <p id="pass-intro" style="margin:0;font-size:18px" class="mut">Escolha a sua password para entrar na admin.</p>
+      <div class="field"><label for="p-new">Nova password</label><input id="p-new" type="password" autocomplete="new-password" minlength="10" required><span class="hint">Mínimo 10 caracteres.</span></div>
+      <div class="field"><label for="p-new2">Repetir password</label><input id="p-new2" type="password" autocomplete="new-password" required></div>
+      <div id="pass-msg" class="msg err" role="alert" hidden></div>
+      <div class="bar-actions"><button class="btn pri" type="submit">Guardar password</button></div>
     </form>
     <a href="../index.html" class="mut" style="font-size:14px">← Voltar ao site</a>
   </div>
@@ -153,13 +161,15 @@ section.block>.label{margin-bottom:20px}
     <span class="tag">Admin</span>
     <div class="demo" id="demo-flag" hidden>Demonstração — nada é gravado</div>
     <nav class="nav" aria-label="Administração">
-      <a href="#painel" data-r="painel"><span class="mk" style="background:#1F1E1C"></span>Painel</a>
-      <a href="#artistas" data-r="artistas"><span class="mk" style="background:#C8432B;border-radius:50%"></span>Artistas</a>
-      <a href="#agenda" data-r="agenda"><span class="mk" style="background:#E3B23C"></span>Agenda</a>
-      <a href="#mensagens" data-r="mensagens"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><path d="M0 100 L100 100 L50 0 Z" fill="#2F5B8C"/></svg>Mensagens<span class="count" id="msg-count" hidden></span></a>
-      <a href="#instagram" data-r="instagram"><svg class="mk" viewBox="0 0 200 150" aria-hidden="true"><use href="#anel" fill="#C8432B"/></svg>Instagram</a>
-      <a href="#textos" data-r="textos"><span class="mk" style="border:2px solid #1F1E1C"></span>Textos</a>
-      <a href="#contactos" data-r="contactos"><span class="mk" style="border:2px solid #1F1E1C;border-radius:50%"></span>Contactos e redes</a>
+      <a href="#painel" data-r="painel" data-who="gestor"><span class="mk" style="background:#1F1E1C"></span>Painel</a>
+      <a href="#artista/meu" data-r="meu" data-who="artista"><span class="mk" style="background:#C8432B;border-radius:50%"></span>O meu presskit</a>
+      <a href="#artistas" data-r="artistas" data-who="gestor"><span class="mk" style="background:#C8432B;border-radius:50%"></span>Artistas</a>
+      <a href="#agenda" data-r="agenda" data-who="todos"><span class="mk" style="background:#E3B23C"></span>Agenda</a>
+      <a href="#mensagens" data-r="mensagens" data-who="gestor"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><path d="M0 100 L100 100 L50 0 Z" fill="#2F5B8C"/></svg>Mensagens<span class="count" id="msg-count" hidden></span></a>
+      <a href="#instagram" data-r="instagram" data-who="gestor"><svg class="mk" viewBox="0 0 200 150" aria-hidden="true"><use href="#anel" fill="#C8432B"/></svg>Instagram</a>
+      <a href="#textos" data-r="textos" data-who="gestor"><span class="mk" style="border:2px solid #1F1E1C"></span>Textos</a>
+      <a href="#contactos" data-r="contactos" data-who="gestor"><span class="mk" style="border:2px solid #1F1E1C;border-radius:50%"></span>Contactos e redes</a>
+      <a href="#equipa" data-r="equipa" data-who="gestor"><span class="mk" style="background:#2F5B8C;border-radius:50%"></span>Equipa</a>
     </nav>
     <div class="side-foot">
       <span class="who" id="who"></span>
@@ -177,7 +187,11 @@ section.block>.label{margin-bottom:20px}
 (function () {
 'use strict';
 var C = window.ARCO_CONFIG || {};
-var sb = null, DEMO = false, ME = '';
+var sb = null, DEMO = false, ME = '', ROLE = { role: null, artist_id: null };
+var HASHQ = new URLSearchParams(location.hash.slice(1));
+var AUTH_LINK = HASHQ.get('access_token') ? (HASHQ.get('type') || 'magiclink') : null;   // invite | recovery
+var AUTH_ERR = HASHQ.get('error_description');
+var ADMIN_URL = location.origin + location.pathname;
 try { if (C.SUPABASE_URL && C.SUPABASE_KEY && window.supabase) sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_KEY); } catch (e) { sb = null; }
 
 var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -260,6 +274,11 @@ function demoData() {
       { id: 'd-e2', artist_id: a2, date: (y + 1) + '-01-17', event_name: 'Festival de exemplo', venue: 'Palco 2', city: 'Porto', tickets_url: 'https://exemplo.pt', visible: true }
     ],
     site_texts: [], settings: [], instagram_posts: [],
+    members: [
+      { user_id: 'd-u0', email: 'demonstração', role: 'gestor', artist_id: null, confirmed: true, last_sign_in_at: new Date().toISOString() },
+      { user_id: 'd-u1', email: 'artista.um@exemplo.pt', role: 'artista', artist_id: a1, confirmed: true, last_sign_in_at: new Date(Date.now() - 864e5).toISOString() },
+      { user_id: 'd-u2', email: 'artista.dois@exemplo.pt', role: 'artista', artist_id: a2, confirmed: false }
+    ],
     messages: [
       { id: 'd-m1', kind: 'Booking', artist: 'Artista Um', name: 'Promotor Exemplo', email: 'promotor@exemplo.pt', event_date: y + '-12-20', place: 'Clube, Coimbra', body: 'Olá! Gostávamos de saber disponibilidade e cachê.', handled: false, created_at: new Date().toISOString() },
       { id: 'd-m2', kind: 'Press', artist: '', name: 'Jornalista', email: 'jornal@exemplo.pt', event_date: null, place: '', body: 'Pedido de entrevista para a edição de Janeiro.', handled: true, created_at: new Date(Date.now() - 864e5 * 3).toISOString() }
@@ -281,7 +300,12 @@ var DB = {
       if (i >= 0) MEM[t][i] = Object.assign(MEM[t][i], row); else MEM[t].push(row);
       return Promise.resolve(row);
     }
-    var body = Object.assign({}, row); if (key === 'id' && !body.id) delete body.id;
+    var body = Object.assign({}, row);
+    if (key === 'id' && body.id && t !== 'instagram_posts') {
+      var id = body.id; delete body.id;
+      return sb.from(t).update(body).eq('id', id).select().single().then(function (r) { if (r.error) throw r.error; return r.data; });
+    }
+    if (key === 'id' && !body.id) delete body.id;
     return sb.from(t).upsert(body, { onConflict: key }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; });
   },
   saveMany: function (t, rows, key) {
@@ -376,7 +400,9 @@ function move(A, i, d) {
   Promise.all(A.map(function (x, k) { return x.sort === k + 1 ? null : DB.save('artists', { id: x.id, slug: x.slug, name: x.name, sort: k + 1 }); })).then(vArtistas).catch(fail);
 }
 
+function isG() { return ROLE.role === 'gestor'; }
 function vArtista(id) {
+  if (id === 'meu') id = ROLE.artist_id;
   var blank = { slug: '', name: '', discipline: '', photo: '', bio_short: '', bio_lead: '', bio_long: '', agent_name: '', agent_email: '', territory: '', presskit_zip: '', audio_url: '', video_url: '', photos: [], docs: [], links: [], sort: 999, visible: true };
   (id === 'novo' ? Promise.resolve([blank]) : DB.list('artists')).then(function (all) {
     var A = id === 'novo' ? blank : all.filter(function (x) { return x.id === id; })[0];
@@ -434,28 +460,28 @@ function vArtista(id) {
     function save() {
       var row = Object.assign({}, A);
       Object.keys(F).forEach(function (k) { row[k] = F[k].value.trim(); });
-      row.slug = slugify(row.slug || row.name); row.visible = vis.checked;
+      row.slug = isG() ? slugify(row.slug || row.name) : A.slug; row.visible = isG() ? vis.checked : A.visible;
       if (!row.name) { toast('Falta o nome do artista.', 'err'); F.name.focus(); return; }
       if (!row.slug) { toast('Falta o endereço (slug).', 'err'); F.slug.focus(); return; }
       row.photos = A.photos.filter(function (p) { return p.web || p.hi; });
       row.docs = A.docs.filter(function (d) { return d.url; });
       row.links = A.links.filter(function (d) { return d.url; });
       saveBtn.disabled = true;
-      DB.save('artists', row, 'id').then(function (r) { toast('Gravado.'); location.hash = '#artista/' + r.id; if (A.id) vArtista(r.id); })
+      DB.save('artists', row, 'id').then(function (r) { toast('Gravado.'); if (!isG()) { vArtista('meu'); return; } location.hash = '#artista/' + r.id; if (A.id) vArtista(r.id); })
         .catch(fail).then(function () { saveBtn.disabled = false; });
     }
     var saveBtn = h('button', { class: 'btn pri', type: 'button', text: 'Gravar', onclick: save });
 
     render([
-      head('Artistas · Presskit', A.name || 'Novo artista', null, [h('a', { class: 'btn', href: '#artistas', text: '← Artistas' }), A.id ? h('a', { class: 'btn link', href: '../artista.html?a=' + encodeURIComponent(A.slug), target: '_blank', rel: 'noopener', text: 'Ver no site ↗' }) : null]),
+      head(isG() ? 'Artistas · Presskit' : 'O meu presskit', A.name || 'Novo artista', null, [isG() ? h('a', { class: 'btn', href: '#artistas', text: '← Artistas' }) : null, A.id ? h('a', { class: 'btn link', href: '../artista.html?a=' + encodeURIComponent(A.slug), target: '_blank', rel: 'noopener', text: 'Ver no site ↗' }) : null]),
       h('section', { class: 'block' }, label('01', 'Identificação'),
         h('div', { class: 'grid' },
           h('div', { class: 'field' }, h('span', { class: 'caps', style: { fontSize: '12px' }, text: 'Foto principal' }), photo,
             uploader('Enviar foto', 'image/*', folder(), function (u) { A.photo = u; photo.style.backgroundImage = bg(u); photo.textContent = ''; }, { web: true }),
             h('span', { class: 'hint', text: 'Formato 4:5, até 500 KB.' })),
           h('div', { class: 'grid', style: { alignContent: 'start' } },
-            field('Nome', F.name), field('Endereço da página', F.slug, 'artista.html?a=…'), field('Disciplina · género', F.discipline, 'Usado também nos filtros.'),
-            h('label', { class: 'check full', for: 'a-visible' }, vis, 'Visível no site')))),
+            field('Nome', F.name), isG() ? field('Endereço da página', F.slug, 'artista.html?a=…') : null, field('Disciplina · género', F.discipline, 'Usado também nos filtros.'),
+            isG() ? h('label', { class: 'check full', for: 'a-visible' }, vis, 'Visível no site') : null))),
       h('section', { class: 'block' }, label('02', 'Biografia'),
         h('div', { class: 'grid' }, field('Bio curta (topo)', F.bio_short, '1–2 frases.', 'full'), field('Abertura', F.bio_lead, 'O essencial para um jornalista.', 'full'), field('Biografia longa', F.bio_long, 'Separe parágrafos com uma linha em branco.', 'full'))),
       h('section', { class: 'block' }, label('03', 'Fotos de imprensa'), photosBox,
@@ -469,8 +495,8 @@ function vArtista(id) {
         h('div', { class: 'grid' }, field('Agente', F.agent_name), field('Email do agente', F.agent_email), field('Território', F.territory)),
         h('div', { style: { marginTop: '20px' } }, linksBox),
         h('button', { class: 'btn sm', type: 'button', style: { marginTop: '12px' }, text: '+ Adicionar rede', onclick: function () { A.links.push({ label: '', url: '' }); drawLinks(); } })),
-      h('div', { class: 'sticky-save' }, saveBtn, h('a', { class: 'btn', href: '#artistas', text: 'Cancelar' }),
-        A.id ? h('button', { class: 'btn danger', type: 'button', style: { marginLeft: 'auto' }, text: 'Apagar artista', onclick: function () {
+      h('div', { class: 'sticky-save' }, saveBtn, isG() ? h('a', { class: 'btn', href: '#artistas', text: 'Cancelar' }) : null,
+        A.id && isG() ? h('button', { class: 'btn danger', type: 'button', style: { marginLeft: 'auto' }, text: 'Apagar artista', onclick: function () {
           if (!confirm('Apagar «' + A.name + '» e todas as datas dele? Não dá para desfazer.')) return;
           DB.remove('artists', A.id).then(function () { toast('Apagado.'); location.hash = '#artistas'; }).catch(fail);
         } }) : null)
@@ -481,6 +507,7 @@ function vArtista(id) {
 function vAgenda(editId) {
   Promise.all([DB.list('artists', 'sort'), DB.list('events', 'date')]).then(function (r) {
     var A = r[0], E = r[1], byId = {}; A.forEach(function (a) { byId[a.id] = a; });
+    if (!isG()) { A = A.filter(function (a) { return a.id === ROLE.artist_id; }); E = E.filter(function (x) { return x.artist_id === ROLE.artist_id; }); }
     var showPast = vAgenda.past;
     var e = E.filter(function (x) { return x.id === editId; })[0] || { artist_id: A[0] && A[0].id, date: '', event_name: '', venue: '', city: '', tickets_url: '', visible: true };
     var sel = h('select', { id: 'e-artist' }, A.map(function (a) { return h('option', { value: a.id, text: a.name, selected: a.id === e.artist_id }); }));
@@ -496,7 +523,7 @@ function vAgenda(editId) {
       DB.save('events', row).then(function () { toast('Gravado.'); location.hash = '#agenda'; vAgenda(); }).catch(fail);
     }
     render([
-      head('Agenda', 'Agenda', 'Datas futuras aparecem no site automaticamente; as passadas saem sozinhas.'),
+      head('Agenda', isG() ? 'Agenda' : 'As minhas datas', 'Datas futuras aparecem no site automaticamente; as passadas saem sozinhas.'),
       h('section', { class: 'panel' }, label(e.id ? '✎' : '+', e.id ? 'Editar data' : 'Nova data'),
         h('div', { class: 'grid', style: { marginTop: '20px' } }, field('Artista', sel), field('Data', F.date), field('Evento', F.event_name), field('Sala / espaço', F.venue), field('Cidade', F.city), field('Link de bilhetes', F.tickets_url, 'Vazio = sem botão.'),
           h('label', { class: 'check', for: 'e-vis' }, vis, 'Visível no site')),
@@ -578,38 +605,152 @@ function vContactos() {
   kvView('settings', SETTINGS, 'Contactos e redes', 'Contactos', 'Emails e redes usados em todo o site: mudam aqui, mudam em todo o lado.', function (d, v) { return inp('s-' + d[0], v, d[2], d[3]); });
 }
 
+function equipa(body) {
+  if (DEMO) {
+    if (body.action === 'list') return Promise.resolve({ max: 10, members: MEM.members.slice() });
+    if (body.action === 'invite') { if (MEM.members.length >= 10) return Promise.reject(new Error('Limite de 10 utilizadores atingido')); MEM.members.push({ user_id: 'd-u' + Date.now(), email: body.email, role: body.role, artist_id: body.artist_id || null, confirmed: false }); }
+    if (body.action === 'update') MEM.members.forEach(function (m) { if (m.user_id === body.user_id) { m.role = body.role; m.artist_id = body.artist_id || null; } });
+    if (body.action === 'remove') MEM.members = MEM.members.filter(function (m) { return m.user_id !== body.user_id; });
+    return Promise.resolve({ ok: true });
+  }
+  return sb.functions.invoke('equipa', { body: body }).then(function (r) {
+    if (r.error) {
+      var ctx = r.error.context;
+      if (ctx && ctx.json) return ctx.json().then(function (j) { throw new Error(j.error || r.error.message); }, function () { throw r.error; });
+      throw r.error;
+    }
+    if (r.data && r.data.error) throw new Error(r.data.error);
+    return r.data;
+  });
+}
+function vEquipa() {
+  Promise.all([equipa({ action: 'list' }), DB.list('artists', 'sort')]).then(function (r) {
+    var M = r[0].members || [], MAX = r[0].max || 10, A = r[1];
+    var byId = {}; A.forEach(function (a) { byId[a.id] = a; });
+    var usedArtist = {}; M.forEach(function (m) { if (m.artist_id) usedArtist[m.artist_id] = 1; });
+    var email = inp('q-email', '', 'email', 'nome@exemplo.pt');
+    var role = h('select', { id: 'q-role' }, h('option', { value: 'artista', text: 'Artista' }), h('option', { value: 'gestor', text: 'Gestor' }));
+    var free = A.filter(function (a) { return !usedArtist[a.id]; });
+    var art = h('select', { id: 'q-art' }, free.length ? free.map(function (a) { return h('option', { value: a.id, text: a.name }); }) : h('option', { value: '', text: '— todos os artistas já têm utilizador —' }));
+    var artF = field('Artista', art, 'Só pode editar o presskit e as datas deste artista.');
+    role.addEventListener('change', function () { artF.hidden = role.value !== 'artista'; });
+    var full = M.length >= MAX;
+    var inviteBtn = h('button', { class: 'btn pri', type: 'button', text: 'Enviar convite', disabled: full, onclick: function () {
+      var e = email.value.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { toast('Email inválido.', 'err'); email.focus(); return; }
+      if (role.value === 'artista' && !art.value) { toast('Crie primeiro o artista em «Artistas».', 'err'); return; }
+      inviteBtn.disabled = true;
+      equipa({ action: 'invite', email: e, role: role.value, artist_id: role.value === 'artista' ? art.value : null })
+        .then(function () { toast('Convite enviado para ' + e + '.'); vEquipa(); })
+        .catch(function (x) { toast(x.message || 'Falhou o convite.', 'err'); inviteBtn.disabled = false; });
+    } });
+    render([
+      head('Equipa', 'Equipa', 'Até ' + MAX + ' utilizadores. Cada artista entra com o seu email e só edita o seu presskit e as suas datas.'),
+      h('section', { class: 'panel' }, label('+', 'Convidar'),
+        full ? h('div', { class: 'msg warn', style: { marginTop: '20px' }, text: 'Limite de ' + MAX + ' utilizadores atingido. Remova alguém para convidar outra pessoa.' }) :
+        h('div', { class: 'grid', style: { marginTop: '20px' } }, field('Email', email), field('Papel', role), artF),
+        h('div', { class: 'bar-actions', style: { marginTop: '20px' } }, inviteBtn, h('span', { class: 'hint mut', text: 'A pessoa recebe um email para escolher a password.' }))),
+      h('section', { class: 'block' }, label('01', 'Utilizadores (' + M.length + ' de ' + MAX + ')'),
+        h('ul', { class: 'rows' }, M.map(function (m) {
+          var self = m.email === ME;
+          var a = byId[m.artist_id];
+          var sel = h('select', { 'aria-label': 'Artista de ' + m.email, style: { maxWidth: '240px' } },
+            h('option', { value: '', text: 'Gestor (todos)', selected: m.role === 'gestor' }),
+            A.filter(function (x) { return !usedArtist[x.id] || x.id === m.artist_id; }).map(function (x) { return h('option', { value: x.id, text: x.name, selected: m.role === 'artista' && x.id === m.artist_id }); }));
+          sel.disabled = self;
+          sel.addEventListener('change', function () {
+            equipa({ action: 'update', user_id: m.user_id, role: sel.value ? 'artista' : 'gestor', artist_id: sel.value || null })
+              .then(function () { toast('Actualizado.'); vEquipa(); }).catch(function (x) { toast(x.message, 'err'); vEquipa(); });
+          });
+          return h('li', null,
+            h('span', { class: m.role === 'gestor' ? 'pill new' : 'pill', text: m.role === 'gestor' ? 'Gestor' : 'Artista' }),
+            h('span', { class: 'grow' }, h('span', { class: 'name', style: { textTransform: 'none', letterSpacing: 0 }, text: m.email + (self ? ' (eu)' : '') }),
+              h('span', { class: 'mut', text: (m.role === 'artista' ? (a ? a.name : 'Artista removido') + ' · ' : '') + (m.confirmed ? (m.last_sign_in_at ? 'Último acesso ' + new Date(m.last_sign_in_at).toLocaleDateString('pt-PT') : 'Activo') : 'Convite por aceitar') })),
+            sel,
+            self ? null : h('span', { class: 'bar-actions' },
+              h('button', { class: 'btn sm', type: 'button', text: 'Reenviar link', onclick: function () { equipa({ action: 'resend', user_id: m.user_id }).then(function () { toast('Link enviado para ' + m.email + '.'); }).catch(function (x) { toast(x.message, 'err'); }); } }),
+              h('button', { class: 'btn sm danger', type: 'button', text: 'Remover', onclick: function () {
+                if (!confirm('Remover o acesso de ' + m.email + '? A conta é apagada; o artista e o presskit ficam no site.')) return;
+                equipa({ action: 'remove', user_id: m.user_id }).then(function () { toast('Removido.'); vEquipa(); }).catch(function (x) { toast(x.message, 'err'); });
+              } })));
+        })))
+    ]);
+  }).catch(function (e) {
+    console.error(e);
+    render([head('Equipa', 'Equipa', null), h('div', { class: 'msg err', text: 'Não foi possível falar com a função «equipa» no Supabase: ' + (e.message || 'erro') + '.' }), h('div', { style: { marginTop: '16px' } }, h('button', { class: 'btn', type: 'button', text: 'Tentar de novo', onclick: vEquipa }))]);
+  });
+}
+
 function loadFail(e) { console.error(e); render([head('Erro', 'Sem ligação', 'Não foi possível ler a base de dados. Verifique a ligação e tente de novo.', h('button', { class: 'btn', type: 'button', text: 'Tentar de novo', onclick: route }))]); }
 
 function counts() {
+  if (!isG()) return;
   DB.list('messages').then(function (M) { var n = M.filter(function (m) { return !m.handled; }).length, c = $('#msg-count'); c.hidden = !n; c.textContent = n; }).catch(function () {});
 }
 
 /* ── router ── */
 function route() {
-  var p = (location.hash.slice(1) || 'painel').split('/');
-  document.querySelectorAll('.nav a').forEach(function (a) { var r = a.getAttribute('data-r'); if (r === p[0] || (r === 'artistas' && p[0] === 'artista')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  ({ painel: vPainel, artistas: vArtistas, artista: function () { vArtista(p[1] || 'novo'); }, agenda: function () { vAgenda(p[1]); }, mensagens: vMensagens, instagram: vInstagram, textos: vTextos, contactos: vContactos }[p[0]] || vPainel)();
+  var p = (location.hash.slice(1) || (isG() ? 'painel' : 'artista/meu')).split('/');
+  if (!isG()) {
+    if (p[0] === 'artista') p = ['artista', 'meu'];
+    else if (p[0] !== 'agenda') p = ['artista', 'meu'];
+  }
+  document.querySelectorAll('.nav a').forEach(function (a) { var r = a.getAttribute('data-r'); if (r === p[0] || (r === 'artistas' && p[0] === 'artista' && isG()) || (r === 'meu' && p[0] === 'artista' && !isG())) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  ({ painel: vPainel, artistas: vArtistas, artista: function () { vArtista(p[1] || 'novo'); }, agenda: function () { vAgenda(p[1]); }, mensagens: vMensagens, instagram: vInstagram, textos: vTextos, contactos: vContactos, equipa: vEquipa }[p[0]] || vPainel)();
 }
 
 /* ── sessão ── */
 function showLogin(msg) {
   $('#v-app').hidden = true; $('#v-login').hidden = false;
+  $('#login-form').hidden = false; $('#pass-form').hidden = true; $('#login-title').textContent = 'Entrar';
   $('#login-cfg').hidden = !!sb; $('#demo-btn').hidden = !!sb;
-  var m = $('#login-msg'); m.hidden = !msg; m.textContent = msg || '';
+  var m = $('#login-msg'); m.className = 'msg err'; m.hidden = !msg; m.textContent = msg || '';
 }
 function showApp(email) {
-  ME = email; $('#who').textContent = email;
+  ME = email; $('#who').textContent = email + (ROLE.role === 'artista' ? ' · artista' : ' · gestor');
+  document.querySelectorAll('.nav a[data-who]').forEach(function (a) { var w = a.getAttribute('data-who'); a.hidden = !(w === 'todos' || w === ROLE.role); });
   $('#v-login').hidden = true; $('#v-app').hidden = false; $('#demo-flag').hidden = !DEMO;
   window.removeEventListener('hashchange', route); window.addEventListener('hashchange', route);
   route(); counts();
 }
 function checkAdmin(session) {
-  if (!session) { showLogin(); return; }
-  sb.rpc('is_admin').then(function (r) {
-    if (r.error || r.data !== true) { sb.auth.signOut(); showLogin('Esta conta não tem acesso à administração.'); return; }
+  if (!session) { showLogin(AUTH_ERR ? 'O link já não é válido. Peça um novo em «Esqueci-me da password».' : null); return; }
+  if (AUTH_LINK) { showSetPassword(); return; }
+  sb.rpc('my_role').then(function (r) {
+    var d = r.data;
+    if (r.error || !d || !d.role || (d.role === 'artista' && !d.artist_id)) { sb.auth.signOut(); showLogin('Esta conta não tem acesso à administração.'); return; }
+    ROLE = { role: d.role, artist_id: d.artist_id };
     showApp(session.user.email);
-  });
+  }, function () { showLogin('Sem ligação. Tente de novo.'); });
 }
+function showSetPassword() {
+  $('#v-app').hidden = true; $('#v-login').hidden = false;
+  $('#login-form').hidden = true; $('#pass-form').hidden = false; $('#login-cfg').hidden = true;
+  $('#login-title').textContent = AUTH_LINK === 'recovery' ? 'Nova password' : 'Bem-vindo';
+  $('#pass-intro').textContent = AUTH_LINK === 'recovery' ? 'Escolha uma password nova.' : 'Foi convidado para a admin do ARCO. Escolha a sua password para entrar.';
+  history.replaceState(null, '', ADMIN_URL);
+}
+$('#pass-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var a = $('#p-new').value, b = $('#p-new2').value, m = $('#pass-msg');
+  var err = function (t) { m.hidden = false; m.textContent = t; };
+  if (a.length < 10) { err('A password tem de ter pelo menos 10 caracteres.'); return; }
+  if (a !== b) { err('As duas passwords não são iguais.'); return; }
+  var btn = this.querySelector('button[type=submit]'); btn.disabled = true;
+  sb.auth.updateUser({ password: a }).then(function (r) {
+    if (r.error) { err(r.error.message); return; }
+    AUTH_LINK = null; m.hidden = true; toast('Password guardada.');
+    sb.auth.getSession().then(function (s) { checkAdmin(s.data.session); });
+  }).catch(function () { err('Sem ligação. Tente de novo.'); }).then(function () { btn.disabled = false; });
+});
+$('#forgot').addEventListener('click', function () {
+  if (!sb) { showLogin('A ligação ao Supabase ainda não está configurada.'); return; }
+  var e = $('#l-email').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { showLogin('Escreva primeiro o seu email no campo acima.'); $('#l-email').focus(); return; }
+  sb.auth.resetPasswordForEmail(e, { redirectTo: ADMIN_URL }).then(function () {
+    var m = $('#login-msg'); m.hidden = false; m.className = 'msg ok'; m.textContent = 'Se o email tiver acesso, recebe um link para escolher uma password nova.';
+  });
+});
 $('#login-form').addEventListener('submit', function (e) {
   e.preventDefault();
   if (!sb) { showLogin('A ligação ao Supabase ainda não está configurada.'); return; }
@@ -619,8 +760,9 @@ $('#login-form').addEventListener('submit', function (e) {
     checkAdmin(r.data.session);
   }).catch(function () { showLogin('Sem ligação. Tente de novo.'); }).then(function () { b.disabled = false; });
 });
-$('#demo-btn').addEventListener('click', function () { DEMO = true; MEM = demoData(); showApp('demonstração'); });
+$('#demo-btn').addEventListener('click', function () { DEMO = true; MEM = demoData(); ROLE = { role: 'gestor', artist_id: null }; showApp('demonstração'); });
 $('#logout').addEventListener('click', function () {
+  ROLE = { role: null, artist_id: null };
   if (DEMO) { DEMO = false; MEM = null; showLogin(); return; }
   sb.auth.signOut().then(function () { showLogin(); });
 });

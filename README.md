@@ -8,16 +8,13 @@ Site estático (GitHub Pages) + Supabase para os conteúdos e a admin.
 - `arco.js` — lê a base e preenche o site. **Reserva:** se a base não responder (sem config, erro ou mais de 8 s) o site mostra o conteúdo embutido no HTML.
 - `supabase/001_arco.sql` — tabelas, regras de segurança (RLS), bucket de ficheiros
 
-## Ligar ao Supabase (falta fazer)
+## Supabase (projecto ARCO, conta própria)
 
-1. Supabase → **SQL Editor → New query** → colar `supabase/001_arco.sql` → **Run** (deve dar «Success»).
-2. **Authentication → Users → Add user** → o teu email (convite, ou password com «Auto confirm»).
-3. No SQL Editor, correr a linha final do ficheiro com o teu email:
-   `insert into public.admins (user_id) select id from auth.users where email = '…';`
-4. **Project Settings → API** → copiar **Project URL** e chave **anon public** para `arco-config.js`.
-5. Commit + Push. Testar em `/admin/`.
+Já feito: `001_arco.sql` + `002_equipa.sql` corridos, função `equipa` publicada (código em `supabase/functions/equipa`), URLs de autenticação apontadas para `/admin/`, `arco-config.js` preenchido.
 
-Antes de ligar, a admin abre em **modo demonstração** (dados de exemplo, nada é gravado).
+- Papéis: **gestor** (tudo + Equipa) e **artista** (só o seu presskit e as suas datas). Máx. 10 utilizadores (trava na base e na função).
+- Convites: Admin → Equipa. A pessoa recebe email, escolhe a password e entra.
+- Esqueceu a password: botão no ecrã de entrada.
 
 ## Notas
 
