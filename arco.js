@@ -192,7 +192,11 @@
     document.title = A.name + ' — Presskit — ARCO';
     $$('[data-p]').forEach(function (n) { var v = A[n.getAttribute('data-p')]; if (v != null && v !== '') n.textContent = v; });
     $$('[data-p-img]').forEach(function (n) { setImg(n, A[n.getAttribute('data-p-img')]); });
-    $$('[data-p-href]').forEach(function (n) { var u = safeUrl(A[n.getAttribute('data-p-href')]); if (u) n.setAttribute('href', u); else hide(n); });
+    $$('[data-p-href]').forEach(function (n) {
+      var u = safeUrl(A[n.getAttribute('data-p-href')]);
+      if (!u) { hide(n); return; }
+      n.setAttribute('href', u); n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener');
+    });
     $$('[data-p-mail]').forEach(function (n) { var m = A[n.getAttribute('data-p-mail')]; if (m) { n.setAttribute('href', 'mailto:' + m); n.textContent = m; } });
     $$('[data-p-embed]').forEach(function (n) { setEmbed(n, A[n.getAttribute('data-p-embed')]); });
     $$('[data-p-paras]').forEach(function (n) {
